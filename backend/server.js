@@ -9,6 +9,18 @@ const app = express()
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }))
 app.use(express.json())
 
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'CodeCraft backend is running',
+    endpoints: ['/api/auth/login', '/api/challenges', '/health'],
+  })
+})
+
+app.get('/health', (req, res) => {
+  res.status(200).send('ok')
+})
+
 app.use('/api/auth', authRouter)
 app.use('/api/challenges', challengesRouter)
 
