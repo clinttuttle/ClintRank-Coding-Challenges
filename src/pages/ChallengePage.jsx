@@ -3,15 +3,55 @@ import { useParams, Link } from 'react-router-dom'
 import { getChallenge } from '../api'
 import '../App.css'
 
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`
+  }
+  if (isPlainObject(value)) {
+    const entries = Object.keys(value)
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+    return `{${entries.join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+function formatValue(value) {
+  if (typeof value === 'string') return value
+  if (typeof value === 'undefined') return 'undefined'
+  if (typeof value === 'function') return '[Function]'
+  if (typeof value === 'symbol') return value.toString()
+
+  try {
+    const serialized = stableStringify(value)
+    return typeof serialized === 'undefined' ? String(value) : serialized
+  } catch {
+    return String(value)
+  }
+}
+
+function isStringArray(value) {
+  return Array.isArray(value) && value.every(item => typeof item === 'string')
+}
+
+function areEqual(a, b) {
+  return stableStringify(a) === stableStringify(b)
+}
+
 function executeCode(code, functionName, input) {
   const output = []
-  const mockConsole = { log: (...args) => output.push(args.map(String).join(' ')) }
+  const mockConsole = { log: (...args) => output.push(args.map(formatValue).join(' ')) }
   try {
-    const fn = new Function('console', `${code}\n${functionName}(${JSON.stringify(input)})`)
-    fn(mockConsole)
-    return { output, error: null }
+    const args = Array.isArray(input) ? input : [input]
+    const fn = new Function('console', 'args', `${code}\nreturn ${functionName}(...args)`)
+    const returnValue = fn(mockConsole, args)
+    return { output, returnValue, error: null }
   } catch (e) {
-    return { output, error: e.message }
+    return { output, returnValue: undefined, error: e.message }
   }
 }
 
@@ -35,9 +75,10 @@ export default function ChallengePage() {
     setRunning(true)
     setTimeout(() => {
       const testResults = challenge.test_cases.map(tc => {
-        const { output, error } = executeCode(code, challenge.function_name, tc.input)
-        const passed = !error && JSON.stringify(output) === JSON.stringify(tc.expected)
-        return { ...tc, output, error, passed }
+        const { output, returnValue, error } = executeCode(code, challenge.function_name, tc.input)
+        const comparesConsoleOutput = isStringArray(tc.expected)
+        const passed = !error && (comparesConsoleOutput ? areEqual(output, tc.expected) : areEqual(returnValue, tc.expected))
+        return { ...tc, output, returnValue, error, passed }
       })
       setResults(testResults)
       setRunning(false)
@@ -111,10 +152,12 @@ export default function ChallengePage() {
             {sampleCases.map((tc, i) => (
               <div key={i}>
                 <h3>Sample Input {i}</h3>
-                <div className="sample-block">{String(tc.input)}</div>
+                <div className="sample-block">{formatValue(tc.input)}</div>
                 <h3>Sample Output {i}</h3>
                 <div className="sample-block">
-                  {tc.expected.map((line, j) => <div key={j}>{line}</div>)}
+                  {isStringArray(tc.expected)
+                    ? tc.expected.map((line, j) => <div key={j}>{line}</div>)
+                    : <div>{formatValue(tc.expected)}</div>}
                 </div>
               </div>
             ))}
@@ -171,7 +214,7 @@ export default function ChallengePage() {
                     <div className="tc-detail">
                       <div className="tc-row">
                         <span className="tc-key">Input</span>
-                        <span className="tc-val">{String(r.input)}</span>
+                        <span className="tc-val">{formatValue(r.input)}</span>
                       </div>
                       {r.error ? (
                         <div className="tc-row error">
@@ -182,12 +225,16 @@ export default function ChallengePage() {
                         <>
                           <div className="tc-row">
                             <span className="tc-key">Expected</span>
-                            <span className="tc-val">{r.expected.join(', ')}</span>
+                            <span className="tc-val">{isStringArray(r.expected) ? r.expected.join(', ') : formatValue(r.expected)}</span>
                           </div>
                           <div className="tc-row">
                             <span className="tc-key">Your Output</span>
                             <span className={`tc-val ${r.passed ? '' : 'wrong'}`}>
-                              {r.output.length ? r.output.join(', ') : '(no output)'}
+                              {r.output.length
+                                ? r.output.join(', ')
+                                : typeof r.returnValue === 'undefined'
+                                  ? '(no output)'
+                                  : formatValue(r.returnValue)}
                             </span>
                           </div>
                         </>

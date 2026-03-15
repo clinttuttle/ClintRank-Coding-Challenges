@@ -18,6 +18,60 @@ const EMPTY_FORM = {
   testCases: [{ ...EMPTY_TC }],
 }
 
+function parseLiteral(raw) {
+  const text = String(raw ?? '').trim()
+  if (!text) return ''
+
+  if (text === 'true') return true
+  if (text === 'false') return false
+  if (text === 'null') return null
+  if (text === 'undefined') return undefined
+  if (!Number.isNaN(Number(text)) && text !== '') return Number(text)
+
+  const looksLikeJson =
+    (text.startsWith('{') && text.endsWith('}')) ||
+    (text.startsWith('[') && text.endsWith(']')) ||
+    (text.startsWith('"') && text.endsWith('"'))
+
+  if (looksLikeJson) {
+    try {
+      return JSON.parse(text)
+    } catch {
+      return raw
+    }
+  }
+
+  return raw
+}
+
+function parseExpectedValue(text) {
+  const trimmed = String(text ?? '').trim()
+  if (!trimmed) return []
+
+  if (trimmed.includes('\n')) {
+    return trimmed.split('\n').map(s => s.trim()).filter(Boolean)
+  }
+
+  return parseLiteral(trimmed)
+}
+
+function formatForEditor(value) {
+  if (typeof value === 'string') return value
+  if (typeof value === 'undefined') return 'undefined'
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
+function formatExpectedForEditor(value) {
+  if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+    return value.join('\n')
+  }
+  return formatForEditor(value)
+}
+
 function formToPayload(form) {
   return {
     title: form.title,
@@ -32,8 +86,8 @@ function formToPayload(form) {
     starter_code: form.starter_code,
     test_cases: form.testCases.map((tc, i) => ({
       label: tc.label || `${tc.sample ? 'Sample' : 'Hidden'} Test Case ${i}`,
-      input: isNaN(tc.input) || tc.input === '' ? tc.input : Number(tc.input),
-      expected: tc.expectedText.split('\n').map(s => s.trim()).filter(Boolean),
+      input: parseLiteral(tc.input),
+      expected: parseExpectedValue(tc.expectedText),
       sample: tc.sample,
     })),
     max_score: Number(form.max_score),
@@ -55,8 +109,8 @@ function challengeToForm(c) {
     success_rate: c.success_rate,
     testCases: c.test_cases.map(tc => ({
       label: tc.label,
-      input: String(tc.input),
-      expectedText: tc.expected.join('\n'),
+      input: formatForEditor(tc.input),
+      expectedText: formatExpectedForEditor(tc.expected),
       sample: tc.sample,
     })),
   }
@@ -250,7 +304,10 @@ export default function AdminPanel() {
                       </div>
                       <div style={field}>
                         <label style={label}>Input</label>
-                        <input style={input} value={tc.input} onChange={e => setTcField(i, 'input', e.target.value)} placeholder="e.g. 15" />
+                        <input style={input} value={tc.input} onChange={e => setTcField(i, 'input', e.target.value)} placeholder={'e.g. 15, [2,3], {"n":5}'} />
+                        <small style={{ color: '#8b8fa8', fontSize: '11px', lineHeight: 1.35 }}>
+                          Use [2,3] for two arguments, [[2,3]] for one array argument, and {'{"k":1}'} for objects.
+                        </small>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingBottom: '2px' }}>
                         <input type="checkbox" id={`sample-${i}`} checked={tc.sample} onChange={e => setTcField(i, 'sample', e.target.checked)} />
@@ -265,12 +322,12 @@ export default function AdminPanel() {
                       >✕</button>
                     </div>
                     <div style={field}>
-                      <label style={label}>Expected Output (one value per line)</label>
+                      <label style={label}>Expected Output / Return Value</label>
                       <textarea
                         style={{ ...textarea, minHeight: '60px', fontFamily: 'Consolas, monospace', fontSize: '12px' }}
                         value={tc.expectedText}
                         onChange={e => setTcField(i, 'expectedText', e.target.value)}
-                        placeholder={'1\n2\nFizz\n4\nBuzz'}
+                        placeholder={'Log output:\n1\n2\nFizz\n\nOr structured value:\n[1,2,3]\n{"ok":true}'}
                       />
                     </div>
                   </div>

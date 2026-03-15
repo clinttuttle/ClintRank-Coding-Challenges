@@ -1,4 +1,6 @@
-const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api'
+const configuredApiOrigin = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+const fallbackApiOrigin = import.meta.env.DEV ? 'http://localhost:5001' : ''
+const BASE = `${configuredApiOrigin || fallbackApiOrigin}/api`
 
 export async function getChallenges() {
   const res = await fetch(`${BASE}/challenges`)
