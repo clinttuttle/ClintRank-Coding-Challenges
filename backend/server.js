@@ -40,9 +40,10 @@ app.use(cors({
 }))
 
 // ── Rate limiting ───────────────────────────────────────────────────────────
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false })
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false })
-const submitLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false })
+const skipInDev = () => process.env.NODE_ENV !== 'production'
+const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, skip: skipInDev, standardHeaders: true, legacyHeaders: false })
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, skip: skipInDev, standardHeaders: true, legacyHeaders: false })
+const submitLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, skip: skipInDev, standardHeaders: true, legacyHeaders: false })
 
 app.use(globalLimiter)
 

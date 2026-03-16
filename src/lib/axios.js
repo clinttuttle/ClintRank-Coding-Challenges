@@ -13,11 +13,11 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Redirect to /login on 401
+// Redirect to /login on 401 (skip if already on login to avoid loops)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && window.location.pathname !== '/login') {
       window.__authToken = null
       window.location.href = '/login'
     }
