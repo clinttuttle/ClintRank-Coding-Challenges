@@ -22,6 +22,17 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false))
   }, [])
 
+  // When any API call returns 401, clear auth state and let React Router redirect
+  useEffect(() => {
+    function handleUnauthorized() {
+      setUser(null)
+      setToken(null)
+      window.__authToken = null
+    }
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized)
+  }, [])
+
   function login(userData, jwtToken) {
     setUser(userData)
     setToken(jwtToken)

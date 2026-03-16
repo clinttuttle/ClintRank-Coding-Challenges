@@ -13,13 +13,13 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Redirect to /login on 401 (skip if already on login to avoid loops)
+// On 401, clear token and notify AuthContext via event (no page reload)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && window.location.pathname !== '/login') {
+    if (error.response?.status === 401) {
       window.__authToken = null
-      window.location.href = '/login'
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
     return Promise.reject(error)
   }
