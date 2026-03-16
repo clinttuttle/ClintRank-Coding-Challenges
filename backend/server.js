@@ -31,15 +31,13 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [process.env.FRONTEND_URL].filter(Boolean)
   : ['http://localhost:5173', 'http://localhost:5174', process.env.FRONTEND_URL].filter(Boolean)
 
-app.use(cors()); 
-
-// app.use(cors({
-//   origin: (origin, cb) => {
-//     if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
-//     cb(new Error('Not allowed by CORS'))
-//   },
-//   credentials: true,
-// }))
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
+    cb(new Error('Not allowed by CORS'))
+  },
+  credentials: true,
+}))
 
 // ── Rate limiting ───────────────────────────────────────────────────────────
 const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false })
