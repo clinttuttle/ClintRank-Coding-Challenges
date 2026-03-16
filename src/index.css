@@ -9,6 +9,11 @@ body {
 
 #root {
   width: 100%;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .main { flex-direction: column !important; }
+  .problem-panel { width: 100% !important; min-width: unset !important; border-right: none !important; border-bottom: 1px solid #2a2d38; }
 }
